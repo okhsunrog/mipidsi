@@ -1,9 +1,7 @@
 //! [super::Display] builder module
 
-use embedded_hal::{
-    delay::DelayNs,
-    digital::{self, OutputPin},
-};
+use embedded_hal::digital::{self, OutputPin};
+use embedded_hal_async::delay::DelayNs;
 
 use crate::{
     dcs::InterfaceExt,
@@ -147,7 +145,7 @@ where
     ///
     /// Returns [InitError] if the area defined by the [`display_size`](Self::display_size)
     /// and [`display_offset`](Self::display_offset) settings is (partially) outside the framebuffer.
-    pub fn init(
+    pub async fn init(
         mut self,
         delay_source: &mut impl DelayNs,
     ) -> Result<Display<DI, MODEL, RST>, InitError<DI::Error, RST::Error>> {
@@ -177,16 +175,20 @@ where
         match self.rst {
             Some(ref mut rst) => {
                 rst.set_low().map_err(InitError::ResetPin)?;
-                delay_source.delay_us(10);
+                delay_source.delay_us(10).await;
                 rst.set_high().map_err(InitError::ResetPin)?;
             }
             None => self
                 .di
                 .write_command(crate::dcs::SoftReset)
+                .await
                 .map_err(InitError::Interface)?,
         }
 
-        let madctl = self.model.init(&mut self.di, delay_source, &self.options)?;
+        let madctl = self
+            .model
+            .init(&mut self.di, delay_source, &self.options)
+            .await?;
 
         let display = Display {
             di: self.di,

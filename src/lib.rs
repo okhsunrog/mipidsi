@@ -109,8 +109,8 @@ use dcs::InterfaceExt;
 
 pub mod interface;
 
-use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
+use embedded_hal_async::delay::DelayNs;
 
 pub mod options;
 use interface::InterfacePixelFormat;
@@ -183,9 +183,12 @@ where
     /// # let mut display = mipidsi::_mock::new_mock_display();
     /// display.set_orientation(Orientation::default().rotate(Rotation::Deg180)).unwrap();
     /// ```
-    pub fn set_orientation(&mut self, orientation: options::Orientation) -> Result<(), DI::Error> {
+    pub async fn set_orientation(
+        &mut self,
+        orientation: options::Orientation,
+    ) -> Result<(), DI::Error> {
         self.madctl = self.madctl.with_orientation(orientation); // set orientation
-        self.di.write_command(self.madctl)?;
+        self.di.write_command(self.madctl).await?;
 
         Ok(())
     }
@@ -207,8 +210,13 @@ where
     /// # let mut display = mipidsi::_mock::new_mock_display();
     /// display.set_pixel(100, 200, Rgb565::new(251, 188, 20)).unwrap();
     /// ```
-    pub fn set_pixel(&mut self, x: u16, y: u16, color: M::ColorFormat) -> Result<(), DI::Error> {
-        self.set_pixels(x, y, x, y, core::iter::once(color))
+    pub async fn set_pixel(
+        &mut self,
+        x: u16,
+        y: u16,
+        color: M::ColorFormat,
+    ) -> Result<(), DI::Error> {
+        self.set_pixels(x, y, x, y, core::iter::once(color)).await
     }
 
     ///
@@ -238,7 +246,7 @@ where
     /// result in undefined behavior.
     ///
     /// </div>
-    pub fn set_pixels<T>(
+    pub async fn set_pixels<T>(
         &mut self,
         sx: u16,
         sy: u16,
@@ -249,11 +257,11 @@ where
     where
         T: IntoIterator<Item = M::ColorFormat>,
     {
-        self.set_address_window(sx, sy, ex, ey)?;
+        self.set_address_window(sx, sy, ex, ey).await?;
 
-        self.di.write_command(dcs::WriteMemoryStart)?;
+        self.di.write_command(dcs::WriteMemoryStart).await?;
 
-        M::ColorFormat::send_pixels(&mut self.di, colors)
+        M::ColorFormat::send_pixels(&mut self.di, colors).await
     }
 
     /// Sets the vertical scroll region.
@@ -271,7 +279,7 @@ where
     ///
     /// After the scrolling region is defined the [`set_vertical_scroll_offset`](Self::set_vertical_scroll_offset) can be
     /// used to scroll the display.
-    pub fn set_vertical_scroll_region(
+    pub async fn set_vertical_scroll_region(
         &mut self,
         top_fixed_area: u16,
         bottom_fixed_area: u16,
@@ -288,7 +296,7 @@ where
             )
         };
 
-        self.di.write_command(vscrdef)
+        self.di.write_command(vscrdef).await
     }
 
     /// Sets the vertical scroll offset.
@@ -298,9 +306,9 @@ where
     ///
     /// Use [`set_vertical_scroll_region`](Self::set_vertical_scroll_region) to setup the scroll region, before
     /// using this method.
-    pub fn set_vertical_scroll_offset(&mut self, offset: u16) -> Result<(), DI::Error> {
+    pub async fn set_vertical_scroll_offset(&mut self, offset: u16) -> Result<(), DI::Error> {
         let vscad = dcs::SetScrollStart::new(offset);
-        self.di.write_command(vscad)
+        self.di.write_command(vscad).await
     }
 
     ///
@@ -312,7 +320,13 @@ where
     }
 
     // Sets the address window for the display.
-    fn set_address_window(&mut self, sx: u16, sy: u16, ex: u16, ey: u16) -> Result<(), DI::Error> {
+    async fn set_address_window(
+        &mut self,
+        sx: u16,
+        sy: u16,
+        ex: u16,
+        ey: u16,
+    ) -> Result<(), DI::Error> {
         // add clipping offsets if present
         let mut offset = self.options.display_offset;
         let mapping = MemoryMapping::from(self.options.orientation);
@@ -328,19 +342,24 @@ where
 
         let (sx, sy, ex, ey) = (sx + offset.0, sy + offset.1, ex + offset.0, ey + offset.1);
 
-        self.di.write_command(dcs::SetColumnAddress::new(sx, ex))?;
-        self.di.write_command(dcs::SetPageAddress::new(sy, ey))
+        self.di
+            .write_command(dcs::SetColumnAddress::new(sx, ex))
+            .await?;
+        self.di
+            .write_command(dcs::SetPageAddress::new(sy, ey))
+            .await
     }
 
     ///
     /// Configures the tearing effect output.
     ///
-    pub fn set_tearing_effect(
+    pub async fn set_tearing_effect(
         &mut self,
         tearing_effect: options::TearingEffect,
     ) -> Result<(), DI::Error> {
         self.di
             .write_command(dcs::SetTearingEffect::new(tearing_effect))
+            .await
     }
 
     ///
@@ -354,10 +373,10 @@ where
     /// Puts the display to sleep, reducing power consumption.
     /// Need to call [Self::wake] before issuing other commands
     ///
-    pub fn sleep<D: DelayNs>(&mut self, delay: &mut D) -> Result<(), DI::Error> {
-        self.di.write_command(dcs::EnterSleepMode)?;
+    pub async fn sleep<D: DelayNs>(&mut self, delay: &mut D) -> Result<(), DI::Error> {
+        self.di.write_command(dcs::EnterSleepMode).await?;
         // All supported models requires a 120ms delay before issuing other commands
-        delay.delay_us(120_000);
+        delay.delay_us(120_000).await;
         self.sleeping = true;
         Ok(())
     }
@@ -365,10 +384,10 @@ where
     ///
     /// Wakes the display after it's been set to sleep via [Self::sleep]
     ///
-    pub fn wake<D: DelayNs>(&mut self, delay: &mut D) -> Result<(), DI::Error> {
-        self.di.write_command(dcs::ExitSleepMode)?;
+    pub async fn wake<D: DelayNs>(&mut self, delay: &mut D) -> Result<(), DI::Error> {
+        self.di.write_command(dcs::ExitSleepMode).await?;
         // ST7789 and st7735s have the highest minimal delay of 120ms
-        delay.delay_us(120_000);
+        delay.delay_us(120_000).await;
         self.sleeping = false;
         Ok(())
     }
@@ -393,7 +412,8 @@ where
 pub mod _mock {
     use core::convert::Infallible;
 
-    use embedded_hal::{delay::DelayNs, digital, spi};
+    use embedded_hal::digital;
+    use embedded_hal_async::{delay::DelayNs, spi};
 
     use crate::{
         interface::{Interface, InterfaceKind},
@@ -401,9 +421,10 @@ pub mod _mock {
         Builder, Display, NoResetPin,
     };
 
-    pub fn new_mock_display() -> Display<MockDisplayInterface, ILI9341Rgb565, NoResetPin> {
+    pub async fn new_mock_display() -> Display<MockDisplayInterface, ILI9341Rgb565, NoResetPin> {
         Builder::new(ILI9341Rgb565, MockDisplayInterface)
             .init(&mut MockDelay)
+            .await
             .unwrap()
     }
 
@@ -426,7 +447,7 @@ pub mod _mock {
     pub struct MockSpi;
 
     impl spi::SpiDevice for MockSpi {
-        fn transaction(
+        async fn transaction(
             &mut self,
             _operations: &mut [spi::Operation<'_, u8>],
         ) -> Result<(), Self::Error> {
@@ -441,7 +462,7 @@ pub mod _mock {
     pub struct MockDelay;
 
     impl DelayNs for MockDelay {
-        fn delay_ns(&mut self, _ns: u32) {}
+        async fn delay_ns(&mut self, _ns: u32) {}
     }
 
     pub struct MockDisplayInterface;
@@ -452,18 +473,18 @@ pub mod _mock {
 
         const KIND: InterfaceKind = InterfaceKind::Serial4Line;
 
-        fn send_command(&mut self, _command: u8, _args: &[u8]) -> Result<(), Self::Error> {
+        async fn send_command(&mut self, _command: u8, _args: &[u8]) -> Result<(), Self::Error> {
             Ok(())
         }
 
-        fn send_pixels<const N: usize>(
+        async fn send_pixels<const N: usize>(
             &mut self,
             _pixels: impl IntoIterator<Item = [Self::Word; N]>,
         ) -> Result<(), Self::Error> {
             Ok(())
         }
 
-        fn send_repeated_pixel<const N: usize>(
+        async fn send_repeated_pixel<const N: usize>(
             &mut self,
             _pixel: [Self::Word; N],
             _count: u32,

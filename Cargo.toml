@@ -6,7 +6,7 @@ authors = ["Ales Katona <almindor@gmail.com>"]
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/almindor/mipidsi"
-keywords = ["embedded-hal-driver", "mipi", "dcs", "display"]
+keywords = ["embedded-hal-driver", "mipi", "dcs", "display", "async"]
 readme = "README.md"
 documentation = "https://docs.rs/mipidsi"
 rust-version = "1.75"
@@ -14,6 +14,7 @@ rust-version = "1.75"
 [dependencies]
 embedded-graphics-core = "0.4.0"
 embedded-hal = "1.0.0"
+embedded-hal-async = "1.0.0"
 
 [dependencies.heapless]
 optional = true
@@ -25,7 +26,3 @@ embedded-graphics = "0.8.1"
 [features]
 default = ["batch"]
 batch = ["heapless"]
-
-[workspace]
-members = ["mipidsi-async"]
-

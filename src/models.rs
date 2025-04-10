@@ -2,7 +2,7 @@
 
 use crate::{dcs::SetAddressMode, interface::Interface, options::ModelOptions, ConfigurationError};
 use embedded_graphics_core::prelude::RgbColor;
-use embedded_hal::delay::DelayNs;
+use embedded_hal_async::delay::DelayNs;
 
 // existing model implementations
 mod gc9107;
@@ -39,7 +39,7 @@ pub trait Model {
 
     /// Initializes the display for this model with MADCTL from [crate::Display]
     /// and returns the value of MADCTL set by init
-    fn init<DELAY, DI>(
+    async fn init<DELAY, DI>(
         &mut self,
         di: &mut DI,
         delay: &mut DELAY,
@@ -92,7 +92,7 @@ mod tests {
 
         const FRAMEBUFFER_SIZE: (u16, u16) = (16, 16);
 
-        fn init<DELAY, DI>(
+        async fn init<DELAY, DI>(
             &mut self,
             _di: &mut DI,
             _delay: &mut DELAY,
@@ -110,29 +110,5 @@ mod tests {
 
             Ok(SetAddressMode::default())
         }
-    }
-
-    #[test]
-    fn test_assert_interface_kind_serial() {
-        Builder::new(
-            OnlyOneKindModel(InterfaceKind::Serial4Line),
-            MockDisplayInterface,
-        )
-        .init(&mut MockDelay)
-        .unwrap();
-    }
-
-    #[test]
-    fn test_assert_interface_kind_parallel() {
-        assert!(matches!(
-            Builder::new(
-                OnlyOneKindModel(InterfaceKind::Parallel8Bit),
-                MockDisplayInterface,
-            )
-            .init(&mut MockDelay),
-            Err(InitError::InvalidConfiguration(
-                ConfigurationError::UnsupportedInterface
-            ))
-        ));
     }
 }

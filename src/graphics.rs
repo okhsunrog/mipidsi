@@ -1,5 +1,4 @@
 use embedded_graphics_core::{
-    draw_target::DrawTarget,
     geometry::{Dimensions, OriginDimensions, Size},
     pixelcolor::RgbColor,
     primitives::Rectangle,
@@ -12,44 +11,41 @@ use crate::{dcs::BitsPerPixel, interface::Interface};
 use crate::{dcs::WriteMemoryStart, models::Model};
 use crate::{interface::InterfacePixelFormat, Display};
 
-impl<DI, M, RST> DrawTarget for Display<DI, M, RST>
+impl<DI, M, RST> Display<DI, M, RST>
 where
     DI: Interface,
     M: Model,
     M::ColorFormat: InterfacePixelFormat<DI::Word>,
     RST: OutputPin,
 {
-    type Error = DI::Error;
-    type Color = M::ColorFormat;
-
     #[cfg(not(feature = "batch"))]
-    fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
+    async fn draw_iter<I>(&mut self, pixels: I) -> Result<(), DI::Error>
     where
-        I: IntoIterator<Item = Pixel<Self::Color>>,
+        I: IntoIterator<Item = Pixel<M::ColorFormat>>,
     {
         for pixel in pixels {
             let x = pixel.0.x as u16;
             let y = pixel.0.y as u16;
 
-            self.set_pixel(x, y, pixel.1)?;
+            self.set_pixel(x, y, pixel.1).await?;
         }
 
         Ok(())
     }
 
     #[cfg(feature = "batch")]
-    fn draw_iter<T>(&mut self, item: T) -> Result<(), Self::Error>
+    async fn draw_iter<T>(&mut self, item: T) -> Result<(), DI::Error>
     where
-        T: IntoIterator<Item = Pixel<Self::Color>>,
+        T: IntoIterator<Item = Pixel<M::ColorFormat>>,
     {
         use crate::batch::DrawBatch;
 
-        self.draw_batch(item)
+        self.draw_batch(item).await
     }
 
-    fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I) -> Result<(), Self::Error>
+    async fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I) -> Result<(), DI::Error>
     where
-        I: IntoIterator<Item = Self::Color>,
+        I: IntoIterator<Item = M::ColorFormat>,
     {
         let intersection = area.intersection(&self.bounding_box());
         let Some(bottom_right) = intersection.bottom_right() else {
@@ -71,6 +67,7 @@ where
         if &intersection == area {
             // Draw the original iterator if no edge overlaps the framebuffer
             self.set_pixels(sx, sy, ex, ey, take_u32(colors, count))
+                .await
         } else {
             // Skip pixels above and to the left of the intersection
             let mut initial_skip = 0;
@@ -94,10 +91,15 @@ where
                 ey,
                 take_u32(TakeSkip::new(colors, take_per_row, skip_per_row), count),
             )
+            .await
         }
     }
 
-    fn fill_solid(&mut self, area: &Rectangle, color: Self::Color) -> Result<(), Self::Error> {
+    async fn fill_solid(
+        &mut self,
+        area: &Rectangle,
+        color: M::ColorFormat,
+    ) -> Result<(), DI::Error> {
         let area = area.intersection(&self.bounding_box());
         let Some(bottom_right) = area.bottom_right() else {
             // No intersection -> nothing to draw
@@ -111,9 +113,9 @@ where
         let ex = bottom_right.x as u16;
         let ey = bottom_right.y as u16;
 
-        self.set_address_window(sx, sy, ex, ey)?;
-        self.di.write_command(WriteMemoryStart)?;
-        M::ColorFormat::send_repeated_pixel(&mut self.di, color, count)
+        self.set_address_window(sx, sy, ex, ey).await?;
+        self.di.write_command(WriteMemoryStart).await?;
+        M::ColorFormat::send_repeated_pixel(&mut self.di, color, count).await
     }
 }
 

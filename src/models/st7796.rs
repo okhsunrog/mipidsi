@@ -1,5 +1,5 @@
 use embedded_graphics_core::pixelcolor::Rgb565;
-use embedded_hal::delay::DelayNs;
+use embedded_hal_async::delay::DelayNs;
 
 use crate::{
     dcs::SetAddressMode,
@@ -16,7 +16,7 @@ impl Model for ST7796 {
     type ColorFormat = Rgb565;
     const FRAMEBUFFER_SIZE: (u16, u16) = (320, 480);
 
-    fn init<DELAY, DI>(
+    async fn init<DELAY, DI>(
         &mut self,
         di: &mut DI,
         delay: &mut DELAY,
@@ -35,6 +35,6 @@ impl Model for ST7796 {
             ));
         }
 
-        super::ST7789.init(di, delay, options)
+        super::ST7789.init(di, delay, options).await
     }
 }

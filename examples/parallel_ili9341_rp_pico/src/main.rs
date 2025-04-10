@@ -119,15 +119,15 @@ fn main() -> ! {
 /// This can be removed when a new version of the `cortex_m` crate is released.
 struct DelayCompat(cortex_m::delay::Delay);
 
-impl embedded_hal::delay::DelayNs for DelayCompat {
-    fn delay_ns(&mut self, mut ns: u32) {
+impl embedded_hal_async::delay::DelayNs for DelayCompat {
+    async fn delay_ns(&mut self, mut ns: u32) {
         while ns > 1000 {
-            self.0.delay_us(1);
+            self.0.delay_us(1).await;
             ns = ns.saturating_sub(1000);
         }
     }
 
-    fn delay_us(&mut self, us: u32) {
-        self.0.delay_us(us);
+    async fn delay_us(&mut self, us: u32) {
+        self.0.delay_us(us).await;
     }
 }
