@@ -3,10 +3,10 @@
 
 use embedded_graphics::{
     draw_target::DrawTarget,
-    geometry::{Dimensions, OriginDimensions}, // Added Dimensions for bounding_box
-    pixelcolor::raw::RawData,                 // Added for into_inner
+    geometry::{Dimensions, OriginDimensions},
+    pixelcolor::raw::RawData,
     pixelcolor::PixelColor,
-    pixelcolor::RgbColor, // Added for r(), g(), b()
+    pixelcolor::RgbColor,
     prelude::Size,
     primitives::Rectangle,
     Pixel,
@@ -18,7 +18,6 @@ pub trait IntoRawBytes<const N: usize>: PixelColor {
     const BYTES_PER_PIXEL: usize = N;
 }
 
-// --- Example Implementations for IntoRawBytes ---
 impl IntoRawBytes<2> for embedded_graphics::pixelcolor::Rgb565 {
     fn into_raw_bytes(self) -> [u8; 2] {
         use embedded_graphics::pixelcolor::raw::RawU16;
@@ -50,22 +49,6 @@ impl<'a> RawBufferBackendMut for &'a mut [u8] {
         self.len()
     }
 }
-
-// If you want Vec support, it needs `alloc`.
-// For now, users pass `my_vec.as_mut_slice()`.
-/*
-#[cfg(feature = "alloc")]
-extern crate alloc;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
-
-#[cfg(feature = "alloc")]
-impl RawBufferBackendMut for Vec<u8> {
-    fn as_mut_u8_slice(&mut self) -> &mut [u8] { self.as_mut_slice() }
-    fn as_u8_slice(&self) -> &[u8] { self.as_slice() }
-    fn u8_len(&self) -> usize { self.len() }
-}
-*/
 
 pub struct RawFrameBuf<C, BUF, const N: usize>
 where
@@ -168,16 +151,34 @@ where
     }
 
     fn clear(&mut self, color: Self::Color) -> Result<(), Self::Error> {
-        let color_bytes = color.into_raw_bytes();
-        let current_width = self.width;
-        let current_height = self.height;
+        let color_bytes = color.into_raw_bytes(); // [byte1, byte2, ..., byteN]
         let buffer_slice = self.buffer.as_mut_u8_slice();
-        let active_buffer_len = current_width * current_height * N;
-
+        let active_buffer_len = self.width * self.height * N;
         let active_slice = &mut buffer_slice[0..active_buffer_len];
-        if N == 1 {
+
+        // Special case: if all bytes in color_bytes are the same
+        // This is true for Rgb565::BLACK ([0,0]), Rgb565::WHITE ([255,255]),
+        // and grayscale colors where R=G=B.
+        let mut all_bytes_same = true;
+        if N > 0 {
+            for i in 1..N {
+                if color_bytes[i] != color_bytes[0] {
+                    all_bytes_same = false;
+                    break;
+                }
+            }
+        } else {
+            // N == 0, should not happen with IntoRawBytes<N> if N > 0
+            return Ok(());
+        }
+
+        if N > 0 && all_bytes_same {
+            // If all bytes of the pixel color are identical (e.g., Rgb565::BLACK is [0,0]),
+            // we can use the highly optimized slice::fill.
             active_slice.fill(color_bytes[0]);
         } else {
+            // Fallback for multi-byte patterns where bytes differ (e.g., Rgb565::RED is [0xF8, 0x00])
+            // or if N == 0 (though N should always be > 0 here)
             for chunk in active_slice.chunks_exact_mut(N) {
                 chunk.copy_from_slice(&color_bytes);
             }
