@@ -75,18 +75,23 @@ where
     /// Sends a raw pixel data slice to the specified rectangular region of the display.
     pub async fn show_raw_data<DW>(
         &mut self,
-        sx: u16,
-        sy: u16,
-        ex: u16,
-        ey: u16,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
         pixel_data: &[DW],
     ) -> Result<(), DI::Error>
     where
         DI: interface::Interface<Word = DW>,
         DW: Copy,
     {
+        // Convert to u16 and calculate end coordinates
+        let sx = x as u16;
+        let sy = y as u16;
+        let ex = sx + (width as u16) - 1;
+        let ey = sy + (height as u16) - 1;
+
         self.set_address_window(sx, sy, ex, ey).await?;
-        // M::write_memory_start is an associated function on the Model trait (static-like for the type M)
         M::write_memory_start(&mut self.di).await?;
         self.di.send_data_slice(pixel_data).await
     }

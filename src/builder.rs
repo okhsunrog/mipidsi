@@ -65,8 +65,8 @@ where
         self
     }
     #[must_use]
-    pub fn display_size(mut self, width: u16, height: u16) -> Self {
-        self.options.display_size = (width, height);
+    pub fn display_size(mut self, width: usize, height: u16) -> Self {
+        self.options.display_size = (width as u16, height as u16);
         self
     }
     #[must_use]

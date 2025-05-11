@@ -11,6 +11,7 @@ use crate::{
 };
 
 /// Common init for all ILI948x models and color formats.
+#[allow(dead_code)]
 pub async fn init_common<DELAY, DI>(
     di: &mut DI,
     delay: &mut DELAY,

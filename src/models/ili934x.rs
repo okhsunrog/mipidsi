@@ -10,6 +10,7 @@ use crate::{
 };
 
 /// Common init for all ILI934x controllers and color formats.
+#[allow(dead_code)]
 pub async fn init_common<DELAY, DI>(
     di: &mut DI,
     delay: &mut DELAY,
