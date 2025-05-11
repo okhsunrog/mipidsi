@@ -1,4 +1,3 @@
-use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_hal_async::delay::DelayNs;
 
 use crate::{
@@ -16,7 +15,6 @@ use crate::{
 pub struct ST7789;
 
 impl Model for ST7789 {
-    type ColorFormat = Rgb565;
     const FRAMEBUFFER_SIZE: (u16, u16) = (240, 320);
 
     async fn init<DELAY, DI>(
@@ -51,8 +49,8 @@ impl Model for ST7789 {
         di.write_command(SetInvertMode::new(options.invert_colors))
             .await?;
 
-        let pf = PixelFormat::with_all(BitsPerPixel::from_rgb_color::<Self::ColorFormat>());
-        di.write_command(SetPixelFormat::new(pf)).await?;
+        let pf_cmd = SetPixelFormat::new(PixelFormat::with_all(BitsPerPixel::Sixteen));
+        di.write_command(pf_cmd).await?;
         delay.delay_us(10_000).await;
         di.write_command(EnterNormalMode).await?;
         delay.delay_us(10_000).await;
