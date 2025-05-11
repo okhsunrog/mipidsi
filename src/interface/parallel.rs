@@ -2,16 +2,12 @@ use embedded_hal::digital::OutputPin;
 
 use super::{Interface, InterfaceKind};
 
-// OutputBus trait and GenericXBitBus implementations can remain largely the same.
-// ... (OutputBus, Generic8BitBus, Generic16BitBus definitions) ...
 pub trait OutputBus {
     type Word: Copy + From<u8> + Eq; // Ensure From<u8> and Eq are still relevant or adjust
     const KIND: InterfaceKind;
     type Error: core::fmt::Debug;
     fn set_value(&mut self, value: Self::Word) -> Result<(), Self::Error>;
 }
-
-// ... (Generic8BitBus and Generic16BitBus implementations)
 
 /// Parallel interface error
 #[derive(Clone, Copy, Debug)]
@@ -66,14 +62,16 @@ where
     const KIND: InterfaceKind = BUS::KIND;
 
     async fn send_command(&mut self, command: u8, args: &[u8]) -> Result<(), Self::Error> {
-        self.dc.set_low().map_err(ParallelError::Dc)?;
-        self.send_word(BUS::Word::from(command)).await?; // send_word is async
+        self.dc.set_low().map_err(ParallelError::Dc)?; // DC LOW for command byte
+        self.send_word(BUS::Word::from(command)).await?; // Send command byte (awaits your async send_word)
+
+        self.dc.set_high().map_err(ParallelError::Dc)?; // DC HIGH for parameters or subsequent data
         if !args.is_empty() {
-            self.dc.set_high().map_err(ParallelError::Dc)?;
             for &arg in args {
-                self.send_word(BUS::Word::from(arg)).await?; // send_word is async
+                self.send_word(BUS::Word::from(arg)).await?; // Send parameters if any (awaits your async send_word)
             }
         }
+        // If args is empty, send_word is not called again for args, but DC remains HIGH.
         Ok(())
     }
 

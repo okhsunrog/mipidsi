@@ -44,11 +44,9 @@ where
 
     async fn send_command(&mut self, command: u8, args: &[u8]) -> Result<(), Self::Error> {
         self.dc.set_low().map_err(SpiError::Dc)?;
-        self.spi.write(&[command]).await.map_err(SpiError::Spi)?; // spi.write is async
-        if !args.is_empty() {
-            self.dc.set_high().map_err(SpiError::Dc)?;
-            self.spi.write(args).await.map_err(SpiError::Spi)?; // spi.write is async
-        }
+        self.spi.write(&[command]).await.map_err(SpiError::Spi)?;
+        self.dc.set_high().map_err(SpiError::Dc)?;
+        self.spi.write(args).await.map_err(SpiError::Spi)?;
         Ok(())
     }
 
