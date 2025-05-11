@@ -12,14 +12,6 @@ documentation = "https://docs.rs/mipidsi"
 rust-version = "1.75"
 
 [dependencies]
-embedded-hal = "1.0.0"
-embedded-hal-async = "1.0.0"
-
-[dependencies.heapless]
-optional = true
-version = "0.8.0"
-
-
-[features]
-default = ["batch"]
-batch = ["heapless"]
+embedded-graphics = "0.8"
+embedded-hal = "1.0"
+embedded-hal-async = "1.0"

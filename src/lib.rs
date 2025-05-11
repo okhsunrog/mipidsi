@@ -19,6 +19,7 @@ pub use builder::*; // Uses the corrected builder
 
 pub mod dcs;
 pub mod models;
+pub mod raw_framebuf;
 use models::Model; // Uses the corrected Model trait
 
 // pub mod _troubleshooting; // Optional
