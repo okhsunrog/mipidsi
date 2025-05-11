@@ -1,4 +1,3 @@
-use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_hal_async::delay::DelayNs;
 
 use crate::{
@@ -13,7 +12,6 @@ use crate::{
 pub struct ST7796;
 
 impl Model for ST7796 {
-    type ColorFormat = Rgb565;
     const FRAMEBUFFER_SIZE: (u16, u16) = (320, 480);
 
     async fn init<DELAY, DI>(

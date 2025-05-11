@@ -1,4 +1,3 @@
-use embedded_graphics_core::pixelcolor::Rgb565;
 use embedded_hal_async::delay::DelayNs;
 
 use crate::{
@@ -16,7 +15,6 @@ use crate::{
 pub struct GC9A01;
 
 impl Model for GC9A01 {
-    type ColorFormat = Rgb565;
     const FRAMEBUFFER_SIZE: (u16, u16) = (240, 240);
 
     async fn init<DELAY, DI>(
@@ -65,8 +63,8 @@ impl Model for GC9A01 {
 
         di.write_command(madctl).await?; // set memory data access control, Top -> Bottom, RGB, Left -> Right
 
-        let pf = PixelFormat::with_all(BitsPerPixel::from_rgb_color::<Self::ColorFormat>());
-        di.write_command(SetPixelFormat::new(pf)).await?; // set interface pixel format, 16bit pixel into frame memory
+        let pf_cmd = SetPixelFormat::new(PixelFormat::with_all(BitsPerPixel::Sixteen));
+        di.write_command(pf_cmd).await?;
 
         di.write_raw(0x90, &[0x08, 0x08, 0x08, 0x08]).await?;
         di.write_raw(0xBD, &[0x06]).await?;

@@ -9,33 +9,31 @@ use embedded_hal_async::delay::DelayNs;
 
 pub use crate::builder::ConfigurationError;
 
-// mod gc9107;
-// mod gc9a01;
+mod gc9107;
+mod gc9a01;
 // mod ili9225;
 // mod ili9341;
 // mod ili9342c;
-// mod ili934x;
+mod ili934x;
 // mod ili9486;
 // mod ili9488;
-// mod ili948x;
+mod ili948x;
 // mod rm67162;
-// mod st7735s;
+mod st7735s;
 mod st7789;
-// mod st7796;
+mod st7796;
 
-// pub use gc9107::*;
-// pub use gc9a01::*;
+pub use gc9107::*;
+pub use gc9a01::*;
 // pub use ili9225::*;
 // pub use ili9341::*;
 // pub use ili9342c::*;
-// pub use ili934x::*;
 // pub use ili9486::*;
 // pub use ili9488::*;
-// pub use ili948x::*;
 // pub use rm67162::*;
-// pub use st7735s::*;
+pub use st7735s::*;
 pub use st7789::*;
-// pub use st7796::*;
+pub use st7796::*;
 
 /// Display model.
 pub trait Model: Sized {
